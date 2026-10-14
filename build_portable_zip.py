@@ -3,8 +3,8 @@ import hashlib, json, time, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-PREFIX = 'playgta5-offline'
-OUTPUT = ROOT / 'playgta5-offline-2026-10-06.zip'
+PREFIX = 'playgta5'
+OUTPUT = ROOT / 'playgta5-local.zip'
 
 class HashWriter:
     """Non-seekable ZIP output: the hash covers every byte exactly once."""
@@ -33,9 +33,13 @@ def main():
             if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.part' and path.name not in {'package-manifest.json', 'package-report.json', 'package-status.json'}:
                 files.append(path)
     for name in ['README.md', 'Launch-Local.cmd', 'Start-Local.ps1', 'serve_local.py', 'verify_snapshot.py',
-                 'mirror_site.py', 'bundle_runtime.py', 'build_portable_zip.py', 'homepage.html',
+                 'mirror_site.py', 'bundle_runtime.py', 'build_portable_zip.py', 'homepage.html', 'index.html',
+                 'static-app.js', 'sw.js', 'import-worker.js', 'server.js',
                  'loader.js', 'game.js', 'io_worker.js', 'wgpu_worker.js', 'headers.txt',
-                 'data-manifest.json', 'shader-index.json', 'public_discovery.py']:
+                 'data-manifest.json', 'shader-index.json', 'public_discovery.py',
+                 'tools/archive_stream.c', 'tools/build-rar-wasm.sh',
+                 'vendor/zip/zip.min.js', 'vendor/zip/LICENSE',
+                 'vendor/libarchive/archive.js', 'vendor/libarchive/archive.wasm', 'vendor/libarchive/COPYING-libarchive.txt']:
         files.append(ROOT / name)
     files.sort(key=lambda p: str(p.relative_to(ROOT)))
     total = sum(p.stat().st_size for p in files)

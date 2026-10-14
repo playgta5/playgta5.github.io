@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayGTA5 — Browser Edition</title>
 <style>
 	html, body { margin: 0; height: 100%; background: #000; color: #ccc; font: 12px monospace; overflow: hidden; }
 	#canvas { display: block; position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; background: #000; }
@@ -37,20 +38,80 @@
 	#data { color: #6a9; }
 	#bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .08); }
 	#fill { height: 100%; width: 0; background: #7cc576; }
-	#hud { position: fixed; left: 8px; bottom: 8px; max-width: 60vw; white-space: pre-wrap; opacity: .8; pointer-events: none; }
-	#fps { position: fixed; left: 8px; top: 6px; display: none; color: #0f0; font: bold 18px/1.2 Consolas, monospace; font-variant-numeric: tabular-nums; text-shadow: 1px 1px 2px #000, 0 0 3px #000; pointer-events: none; z-index: 10; }
-</style>
-</head>
+		#hud { position: fixed; left: 8px; bottom: 8px; max-width: 60vw; white-space: pre-wrap; opacity: .8; pointer-events: none; }
+		#fps { position: fixed; left: 8px; top: 6px; display: none; color: #0f0; font: bold 18px/1.2 Consolas, monospace; font-variant-numeric: tabular-nums; text-shadow: 1px 1px 2px #000, 0 0 3px #000; pointer-events: none; z-index: 10; }
+		#mirror-setup { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; box-sizing: border-box; background: rgba(0, 0, 0, .94); backdrop-filter: blur(4px); color: #eee; font: 15px/1.5 system-ui, sans-serif; }
+		#mirror-setup[hidden] { display: none; }
+		.mirror-card { width: min(620px, 100%); padding: 28px; box-sizing: border-box; background: rgba(17, 20, 17, .97); border: 1px solid rgba(255, 255, 255, .2); border-top: 3px solid #77bd70; box-shadow: 0 20px 80px #000; }
+		.mirror-kicker { color: #8ccc81; font: 700 11px/1.2 system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+		.mirror-card h1 { margin: 12px 0 8px; font: 600 clamp(24px, 5vw, 34px)/1.1 system-ui, sans-serif; letter-spacing: -.03em; }
+		#mirror-status { min-height: 3.2em; margin: 14px 0; color: #c8cec8; overflow-wrap: anywhere; }
+		#mirror-status.error { color: #ff9b86; }
+		.mirror-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+		.mirror-actions button { border: 1px solid #6d806c; border-radius: 2px; padding: 10px 14px; background: #263b27; color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+		.mirror-actions button:hover:not(:disabled) { background: #38563a; }
+		.mirror-actions button:disabled { cursor: wait; opacity: .55; }
+		.mirror-actions #mirror-export { background: #242a2f; border-color: #66727a; }
+		.mirror-actions #mirror-remove { background: transparent; border-color: #594745; color: #efb5aa; }
+		#mirror-progress { display: block; width: 100%; height: 8px; margin: 16px 0; accent-color: #77bd70; }
+		.mirror-footnote { margin: 16px 0 0; color: #889188; font: 12px/1.5 system-ui, sans-serif; }
+	</style>
+	<script>
+		(() => {
+			const local = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+			window.__mirrorState = new Promise((resolve) => { window.__resolveMirrorState = resolve; });
+			window.__siteBoot = (async () => {
+				if (local) return { local: true };
+				if (!isSecureContext || !('serviceWorker' in navigator)) return { error: 'Open this page over HTTPS in a current Chrome or Edge browser.' };
+				const root = new URL('./', location.href);
+				try {
+					await navigator.serviceWorker.register(new URL('sw.js', root), { scope: root.pathname });
+					await navigator.serviceWorker.ready;
+					if (!navigator.serviceWorker.controller) await new Promise((resolve, reject) => {
+						const timer = setTimeout(() => reject(new Error('The static worker did not take control of this page.')), 15000);
+						navigator.serviceWorker.addEventListener('controllerchange', () => { clearTimeout(timer); resolve(); }, { once: true });
+					});
+					const key = 'playgta5-coi-reload';
+					if (!crossOriginIsolated) {
+						if (sessionStorage.getItem(key) !== '1') { sessionStorage.setItem(key, '1'); location.reload(); return new Promise(() => {}); }
+						return { error: 'The browser did not apply cross-origin isolation. Try a current Chrome or Edge browser and reload.' };
+					}
+					sessionStorage.removeItem(key);
+					return { local: false };
+				} catch (error) { return { error: `Static hosting setup failed: ${error.message}` }; }
+			})();
+		})();
+	</script>
+	</head>
 <body>
 <canvas id="canvas" width="800" height="600" tabindex="-1"></canvas>
 <div id="hud"></div>
 <div id="loading"><div id="ls-stage"><div id="ls-screens"></div><img id="ls-logo" src="/b/8b0b5899ed/title/logo.png" alt=""><div id="ls-bars"><div id="modes" class="ls-bar"><button data-act="back"></button><button data-act="map5"></button><button data-act="map6"></button><button data-act="sandbox"></button><button data-act="story"></button></div><div class="ls-bar"><span id="label">Starting...</span><span id="pct">0%</span><i class="ls-spin"></i></div></div></div><div id="ls-log"><div id="data"></div><div id="console"></div></div><div id="bar"><div id="fill"></div></div></div>
 <div id="fps"></div>
+<section id="mirror-setup" hidden aria-labelledby="mirror-title">
+	<div class="mirror-card">
+		<div class="mirror-kicker">PlayGTA5 · local data</div>
+		<h1 id="mirror-title">Bring your own mirror</h1>
+		<p id="mirror-status" aria-live="polite">Checking local browser storage…</p>
+		<progress id="mirror-progress" hidden></progress>
+		<input id="mirror-file" type="file" accept=".zip,.rar,application/zip,application/vnd.rar" hidden>
+		<div class="mirror-actions">
+			<button id="mirror-choose" type="button">Choose mirror archive (.zip or .rar)</button>
+			<button id="mirror-start" type="button" hidden>Start game</button>
+			<button id="mirror-export" type="button" hidden>Download local build</button>
+			<button id="mirror-remove" type="button" hidden>Remove saved mirror</button>
+		</div>
+		<p class="mirror-footnote">The archive is processed on this device and is not uploaded. The mirror is saved in this browser for future visits. Import and local-build export can require 20+ GB of free disk space. Use your own legally obtained game data.</p>
+	</div>
+</section>
+<script src="/vendor/zip/zip.min.js"></script>
+<script src="/static-app.js"></script>
 <script type="module">
 // Page of the browser build. The engine runs in a dedicated worker (loader.js: its "main thread", where the static constructors and
 // main() run and which may block); the page only owns the canvas, which is transferred to that worker and on to the GPU worker.
 // Query string: ?args=-flag1,-flag2=value (added to the engine command line), ?shot=N (screenshot of every N-th present to the dev server).
 const q = new URLSearchParams(location.search);
+const mirrorState = await window.__mirrorState;
 // URL prefix of everything this page loads (loader, workers, engine, shaders, title art): empty on the dev server; on the PHP host (phase3/host/index.php) it puts the page's own
 // text `/b/8b0b5899ed` through str_replace to `/b/<build id>`, so those files are cached for ever under URLs that change when the build does.
 const BASE = '/b/8b0b5899ed'.charAt(0) === '_' ? '' : '/b/8b0b5899ed';
@@ -344,17 +405,31 @@ if (remoteLog) {
 }
 // Release the io worker's exclusive storage handles as soon as this page goes away (a quick reload would otherwise find them locked and run without the store).
 addEventListener('pagehide', () => { try { new BroadcastChannel('game-io').postMessage('close'); } catch (e) {} });
-// Earlier versions cached the game data with a service worker (sw.js) and the Cache API: remove both, the io worker keeps its own store (io_worker.js).
+// Remove only the old Cache API data; the static-host service worker is required for isolation and mirror streaming.
 async function dropOldCache() {
 	try {
-		if ('serviceWorker' in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
 		if (window.caches) for (const k of await caches.keys()) if (k.startsWith('gamedata')) await caches.delete(k);
 	} catch (e) { console.warn('could not remove the old cache: ' + e); }
 }
 let lowMemory = false;		// set below (module scope: the ?mem readout further down also needs it)
 let startSize = [1280, 720], wantSize = null;		// set below (module scope: installInput uses them)
-if (!crossOriginIsolated) { document.getElementById('label').textContent = 'not cross-origin isolated: open the page over https (or localhost); the server sends COOP/COEP'; document.getElementById('label').style.color = '#e66'; }
+const mirrorSetup = document.getElementById('mirror-setup');
+if (!crossOriginIsolated) {
+	document.getElementById('label').textContent = 'not cross-origin isolated: open the page over https (or localhost); the server sends COOP/COEP';
+	document.getElementById('label').style.color = '#e66';
+	mirrorSetup.hidden = false;
+	document.getElementById('loading').style.display = 'none';
+	canvas.style.display = 'none';
+}
+else if (!mirrorState.ready || q.get('play') !== '1') {
+	mirrorSetup.hidden = false;
+	document.getElementById('loading').style.display = 'none';
+	canvas.style.display = 'none';
+}
 else {
+	mirrorSetup.hidden = true;
+	document.getElementById('loading').style.display = '';
+	canvas.style.display = '';
 	const offscreen = canvas.transferControlToOffscreen();
 	await dropOldCache();
 	// Low-memory profile (?low=1 forces it, ?low=0 forbids it; default: navigator.deviceMemory <= 4, which browsers report as 4 for 4 GB and less):

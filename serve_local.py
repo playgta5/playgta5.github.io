@@ -113,7 +113,7 @@ if __name__ == '__main__':
     address = 'http://localhost:%d/' % server.server_port
     print('Local mirror: %s (Ctrl+C to stop)' % address, flush=True)
     if options.open:
-        webbrowser.open(address)
+        webbrowser.open(address + '?local=1&play=1')
     try:
         server.serve_forever()
     except KeyboardInterrupt:
