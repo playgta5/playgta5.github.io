@@ -1,13 +1,11 @@
 const STORE = 'playgta5-mirror';
 const $ = (id) => document.getElementById(id);
-const panel = $('mirror-setup');
-const statusEl = $('mirror-status');
-const progressEl = $('mirror-progress');
 const chooseButton = $('mirror-choose');
-const startButton = $('mirror-start');
 const exportButton = $('mirror-export');
-const removeButton = $('mirror-remove');
 const fileInput = $('mirror-file');
+const labelEl = $('label');
+const consoleEl = $('console');
+const dataEl = $('data');
 const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
 const fmtBytes = (bytes) => {
   if (!Number.isFinite(bytes)) return 'unknown size';
@@ -17,8 +15,9 @@ const fmtBytes = (bytes) => {
   return `${n.toFixed(i >= 3 ? 2 : 1)} ${units[i]}`;
 };
 const setStatus = (message, isError = false) => {
-  statusEl.textContent = message;
-  statusEl.classList.toggle('error', isError);
+  labelEl.textContent = message;
+  labelEl.style.color = isError ? '#e66' : '';
+  if (isError) consoleEl.textContent = message;
 };
 
 async function inspectStoredMirror() {
@@ -63,45 +62,32 @@ async function storageSummary() {
 }
 
 function showState(state) {
-  panel.hidden = false;
   if (state.error) {
-    setStatus(state.error, true);
-    chooseButton.disabled = true;
-    startButton.hidden = true;
+    setStatus('Mirror storage is unavailable', true);
+    consoleEl.textContent = state.error;
+    dataEl.textContent = 'Open this page in a supported browser over HTTPS.';
+    chooseButton.hidden = true;
     exportButton.hidden = true;
-    removeButton.hidden = true;
     return;
   }
   if (state.ready) {
-    const details = state.local
-      ? 'Local mirror detected. The files are served from this build.'
-      : `Mirror saved in this browser: ${Number(state.record.files).toLocaleString()} files, ${fmtBytes(state.record.bytes)}. It will remain available on this site in this browser.`;
-    setStatus(details);
-    if (new URLSearchParams(location.search).get('play') === '1') panel.hidden = true;
-    chooseButton.textContent = state.local ? 'Local files are already installed' : 'Replace mirror (.zip or .rar)';
-    chooseButton.disabled = !!state.local;
-    startButton.hidden = false;
+    setStatus('Starting the game…');
+    consoleEl.textContent = '';
+    dataEl.textContent = state.local
+      ? 'Using mirror files from this local build.'
+      : `${Number(state.record.files).toLocaleString()} mirror files saved in this browser.`;
+    chooseButton.hidden = true;
     exportButton.hidden = !!state.local;
-    removeButton.hidden = !!state.local;
+    document.getElementById('loading').classList.remove('mirror-gate');
   } else {
-    const message = state.storageMessage || 'Choose the mirror archive. It is extracted on this device and is not uploaded. The first import may take a long time.';
-    setStatus(state.warning ? `${state.warning} ${message}` : message);
-    chooseButton.textContent = 'Choose mirror archive (.zip or .rar)';
+    setStatus('Choose your mirror archive to begin');
+    consoleEl.textContent = state.warning || 'The archive stays in this browser; nothing is uploaded.';
+    dataEl.textContent = state.storageMessage || 'The mirror can require 20+ GB of free storage.';
+    chooseButton.hidden = false;
     chooseButton.disabled = false;
-    startButton.hidden = true;
     exportButton.hidden = true;
-    removeButton.hidden = true;
+    document.getElementById('loading').classList.add('mirror-gate');
   }
-}
-
-async function removeStoredMirror() {
-  if (!confirm('Remove the mirror stored for this site from this browser? The game files will need to be imported again.')) return;
-  try {
-    const root = await navigator.storage.getDirectory();
-    await root.removeEntry(STORE, { recursive: true });
-    const url = new URL(location.href); url.searchParams.delete('play');
-    location.replace(url.href);
-  } catch (error) { setStatus(`Could not remove stored mirror: ${error.message}`, true); }
 }
 
 let importWorker = null;
@@ -112,32 +98,41 @@ function beginImport(file) {
   importWorker?.terminate();
   importWorker = new Worker('/import-worker.js');
   chooseButton.disabled = true;
-  startButton.hidden = true;
   exportButton.hidden = true;
-  removeButton.hidden = true;
-  progressEl.hidden = false;
-  progressEl.removeAttribute('value');
-  setStatus(`Preparing ${file.name} (${fmtBytes(file.size)}). No upload will be made.`);
+  document.getElementById('loading').classList.add('mirror-importing');
+  setStatus('Preparing your mirror archive…');
+  consoleEl.textContent = `${file.name} · ${fmtBytes(file.size)} · processed on this device`;
   importWorker.onmessage = (event) => {
     const message = event.data;
-    if (message.type === 'start') setStatus(`Reading ${message.archiveName} (${fmtBytes(message.archiveBytes)}). Extracted: 0 files, 0 B.`);
-    if (message.type === 'progress') setStatus(`Extracting ${message.currentFile || 'mirror files'} — ${Number(message.filesDone).toLocaleString()} files, ${fmtBytes(message.bytesWritten)} written. Keep this tab open.`);
+    if (message.type === 'start') {
+      setStatus('Reading mirror archive…');
+      consoleEl.textContent = `${message.archiveName} · ${fmtBytes(message.archiveBytes)}`;
+    }
+    if (message.type === 'progress') {
+      setStatus('Importing mirror data…');
+      dataEl.textContent = `${Number(message.filesDone).toLocaleString()} files · ${fmtBytes(message.bytesWritten)} saved`;
+      consoleEl.textContent = (message.currentFile || 'Mirror files') + ' · Keep this tab open';
+    }
     if (message.type === 'error') {
-      progressEl.hidden = true;
+      document.getElementById('loading').classList.remove('mirror-importing');
       chooseButton.disabled = false;
-      setStatus(`Import failed: ${message.message}. The partial local copy can be replaced by choosing the archive again.`, true);
+      setStatus('Mirror import failed', true);
+      consoleEl.textContent = `${message.message}. Choose the archive again to retry.`;
       importWorker.terminate(); importWorker = null;
     }
     if (message.type === 'complete') {
-      progressEl.hidden = true;
-      setStatus(`Import complete: ${Number(message.filesDone).toLocaleString()} files, ${fmtBytes(message.bytesWritten)} saved. Reloading to apply the new mirror…`);
+      document.getElementById('loading').classList.remove('mirror-importing');
+      setStatus('Mirror ready — starting the game…');
+      dataEl.textContent = `${Number(message.filesDone).toLocaleString()} files · ${fmtBytes(message.bytesWritten)} saved`;
       importWorker.terminate(); importWorker = null;
-      setTimeout(() => { const url = new URL(location.href); url.searchParams.delete('play'); location.replace(url.href); }, 900);
+      setTimeout(() => { const url = new URL(location.href); url.searchParams.set('play', '1'); location.replace(url.href); }, 900);
     }
   };
   importWorker.onerror = (event) => {
-    progressEl.hidden = true; chooseButton.disabled = false;
-    setStatus(`Import worker failed: ${event.message || 'unknown error'}`, true);
+    document.getElementById('loading').classList.remove('mirror-importing');
+    chooseButton.disabled = false;
+    setStatus('Mirror import failed', true);
+    consoleEl.textContent = event.message || 'The import worker stopped unexpectedly.';
   };
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => false);
   importWorker.postMessage({ type: 'import', file });
@@ -158,6 +153,7 @@ const PACKAGE_FILES = [
   ['serve_local.py', 'serve_local.py'],
   ['server.js', 'server.js'],
   ['index.html', 'mirror/playgta5.com/index.html'],
+  ['favicon.ico', 'mirror/playgta5.com/favicon.ico'],
   ['static-app.js', 'mirror/playgta5.com/static-app.js'],
   ['sw.js', 'mirror/playgta5.com/sw.js'],
   ['import-worker.js', 'mirror/playgta5.com/import-worker.js'],
@@ -180,12 +176,12 @@ async function downloadPortableBuild() {
   if (!window.showSaveFilePicker || !window.zip?.ZipWriter || !window.zip?.BlobReader) {
     throw new Error('Large ZIP64 export requires a current Chrome or Edge browser with File System Access API support.');
   }
-  const originRoot = await navigator.storage.getDirectory();
-  const mirror = await originRoot.getDirectoryHandle(STORE);
   const outputHandle = await window.showSaveFilePicker({
     suggestedName: 'playgta5-local.zip',
     types: [{ description: 'ZIP64 archive', accept: { 'application/zip': ['.zip'] } }],
   });
+  const originRoot = await navigator.storage.getDirectory();
+  const mirror = await originRoot.getDirectoryHandle(STORE);
   const output = await outputHandle.createWritable();
   const writer = new window.zip.ZipWriter(output, { zip64: true });
   let added = 0;
@@ -236,16 +232,11 @@ async function initialize() {
 
   chooseButton.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => { beginImport(fileInput.files?.[0]); fileInput.value = ''; });
-  startButton.addEventListener('click', () => {
-    const url = new URL(location.href); url.searchParams.set('play', '1'); location.assign(url.href);
-  });
-  removeButton.addEventListener('click', removeStoredMirror);
   exportButton.addEventListener('click', async () => {
     exportButton.disabled = true;
-    progressEl.hidden = false; progressEl.removeAttribute('value');
     try { await downloadPortableBuild(); }
-    catch (error) { setStatus(error.name === 'AbortError' ? 'Build export canceled.' : `Build export failed: ${error.message}`, error.name !== 'AbortError'); }
-    finally { progressEl.hidden = true; exportButton.disabled = false; }
+    catch (error) { setStatus(error.name === 'AbortError' ? 'Build export canceled' : 'Build export failed', error.name !== 'AbortError'); consoleEl.textContent = error.message; }
+    finally { exportButton.disabled = false; }
   });
 }
 

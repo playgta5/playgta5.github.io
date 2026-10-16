@@ -121,7 +121,8 @@ def main():
                 records[rec['path']] = rec
             except ValueError:
                 pass
-    for path, source in [('/index.html', 'index.html'), ('/static-app.js', 'static-app.js'),
+    for path, source in [('/index.html', 'index.html'), ('/favicon.ico', 'favicon.ico'),
+                         ('/static-app.js', 'static-app.js'),
                          ('/sw.js', 'sw.js'), ('/import-worker.js', 'import-worker.js'),
                          ('/vendor/zip/zip.min.js', 'vendor/zip/zip.min.js'),
                          ('/vendor/zip/LICENSE', 'vendor/zip/LICENSE'),

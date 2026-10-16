@@ -20,7 +20,7 @@ const ISOLATION = {
 const MIME = {
   '.bin': 'application/octet-stream', '.cfg': 'text/plain; charset=utf-8', '.dat': 'application/octet-stream',
   '.dll': 'application/octet-stream', '.fxc': 'application/octet-stream', '.gfx': 'application/octet-stream',
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.html': 'text/html; charset=utf-8', '.ico': 'image/vnd.microsoft.icon', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.meta': 'application/octet-stream', '.png': 'image/png', '.sps': 'application/octet-stream', '.wasm': 'application/wasm',
   '.webp': 'image/webp', '.woff': 'font/woff', '.xml': 'application/xml; charset=utf-8', '.ymt': 'application/octet-stream',
 };

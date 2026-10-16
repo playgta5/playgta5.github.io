@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PlayGTA5 — Browser Edition</title>
+<title>game</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <style>
 	html, body { margin: 0; height: 100%; background: #000; color: #ccc; font: 12px monospace; overflow: hidden; }
 	#canvas { display: block; position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; background: #000; }
@@ -25,7 +26,7 @@
 	#modes button { display: flex; align-items: center; height: 24px; padding: 0; border: 0; background: none; color: #fff; font: 12px Chalet, sans-serif; cursor: pointer; }
 	#modes button:disabled { cursor: default; }
 	#modes button[hidden] { display: none; }
-	#modes.ask button:not(:disabled) .ls-key { animation: ls-ask 1.2s ease-in-out infinite; }
+	#modes.ask button[data-act]:not(:disabled) .ls-key { animation: ls-ask 1.2s ease-in-out infinite; }
 	@keyframes ls-ask { 50% { opacity: .35; } }
 	.ls-key { margin-left: 4px; min-width: 12px; height: 15px; padding: 0 4px; line-height: 16px; border-radius: 2px; background: #fff; color: #000; font-size: 10px; text-transform: uppercase; }
 	.ls-spin { flex: none; width: 22px; height: 22px; margin-left: 2px; background: url('/b/8b0b5899ed/title/spinner.png') center / 24px 24px no-repeat; animation: ls-spin 2s steps(60) infinite; }
@@ -35,26 +36,16 @@
 	/* kept for now: the port's progress bar along the bottom edge, the newest log line centred above it and the data downloaded above that */
 	#ls-log { position: absolute; left: 8px; right: 8px; bottom: 6px; display: flex; flex-direction: column; align-items: center; font: 10px/1.35 Consolas, monospace; color: rgba(190, 190, 190, .75); text-shadow: 0 0 2px #000, 1px 1px 1px #000; white-space: pre; pointer-events: none; }
 	#console { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-	#data { color: #6a9; }
+	#data { color: #6a9; max-width: 85vw; overflow: hidden; text-overflow: ellipsis; }
 	#bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .08); }
 	#fill { height: 100%; width: 0; background: #7cc576; }
-		#hud { position: fixed; left: 8px; bottom: 8px; max-width: 60vw; white-space: pre-wrap; opacity: .8; pointer-events: none; }
-		#fps { position: fixed; left: 8px; top: 6px; display: none; color: #0f0; font: bold 18px/1.2 Consolas, monospace; font-variant-numeric: tabular-nums; text-shadow: 1px 1px 2px #000, 0 0 3px #000; pointer-events: none; z-index: 10; }
-		#mirror-setup { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; box-sizing: border-box; background: rgba(0, 0, 0, .94); backdrop-filter: blur(4px); color: #eee; font: 15px/1.5 system-ui, sans-serif; }
-		#mirror-setup[hidden] { display: none; }
-		.mirror-card { width: min(620px, 100%); padding: 28px; box-sizing: border-box; background: rgba(17, 20, 17, .97); border: 1px solid rgba(255, 255, 255, .2); border-top: 3px solid #77bd70; box-shadow: 0 20px 80px #000; }
-		.mirror-kicker { color: #8ccc81; font: 700 11px/1.2 system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
-		.mirror-card h1 { margin: 12px 0 8px; font: 600 clamp(24px, 5vw, 34px)/1.1 system-ui, sans-serif; letter-spacing: -.03em; }
-		#mirror-status { min-height: 3.2em; margin: 14px 0; color: #c8cec8; overflow-wrap: anywhere; }
-		#mirror-status.error { color: #ff9b86; }
-		.mirror-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
-		.mirror-actions button { border: 1px solid #6d806c; border-radius: 2px; padding: 10px 14px; background: #263b27; color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
-		.mirror-actions button:hover:not(:disabled) { background: #38563a; }
-		.mirror-actions button:disabled { cursor: wait; opacity: .55; }
-		.mirror-actions #mirror-export { background: #242a2f; border-color: #66727a; }
-		.mirror-actions #mirror-remove { background: transparent; border-color: #594745; color: #efb5aa; }
-		#mirror-progress { display: block; width: 100%; height: 8px; margin: 16px 0; accent-color: #77bd70; }
-		.mirror-footnote { margin: 16px 0 0; color: #889188; font: 12px/1.5 system-ui, sans-serif; }
+	#hud { position: fixed; left: 8px; bottom: 8px; max-width: 60vw; white-space: pre-wrap; opacity: .8; pointer-events: none; }
+	#fps { position: fixed; left: 8px; top: 6px; display: none; color: #0f0; font: bold 18px/1.2 Consolas, monospace; font-variant-numeric: tabular-nums; text-shadow: 1px 1px 2px #000, 0 0 3px #000; pointer-events: none; z-index: 10; }
+	#loading.mirror-gate #pct { display: none; }
+	#loading.mirror-gate:not(.mirror-importing) .ls-spin { display: none; }
+	#loading.mirror-gate #ls-stage, #loading.mirror-gate #modes button { font-family: Arial, sans-serif; }
+	#loading.mirror-gate .ls-spin { background: none; border: 2px solid rgba(255, 255, 255, .25); border-top-color: #fff; border-radius: 50%; box-sizing: border-box; animation: ls-spin 1s linear infinite; }
+	#loading.mirror-gate #fill { width: 0 !important; }
 	</style>
 	<script>
 		(() => {
@@ -86,24 +77,9 @@
 <body>
 <canvas id="canvas" width="800" height="600" tabindex="-1"></canvas>
 <div id="hud"></div>
-<div id="loading"><div id="ls-stage"><div id="ls-screens"></div><img id="ls-logo" src="/b/8b0b5899ed/title/logo.png" alt=""><div id="ls-bars"><div id="modes" class="ls-bar"><button data-act="back"></button><button data-act="map5"></button><button data-act="map6"></button><button data-act="sandbox"></button><button data-act="story"></button></div><div class="ls-bar"><span id="label">Starting...</span><span id="pct">0%</span><i class="ls-spin"></i></div></div></div><div id="ls-log"><div id="data"></div><div id="console"></div></div><div id="bar"><div id="fill"></div></div></div>
+<div id="loading"><div id="ls-stage"><div id="ls-screens"></div><img id="ls-logo" src="/favicon.ico" alt=""><div id="ls-bars"><div id="modes" class="ls-bar"><button data-act="back"></button><button data-act="map5"></button><button data-act="map6"></button><button data-act="sandbox"></button><button data-act="story"></button><button id="mirror-choose" type="button" aria-label="Choose a mirror archive" hidden><span>Choose mirror (.zip/.rar)</span><span class="ls-key">M</span></button><button id="mirror-export" type="button" aria-label="Download local build with the saved mirror" title="Includes the mirror saved in this browser" hidden><span>Download local build</span><span class="ls-key">D</span></button></div><div class="ls-bar"><span id="label">Starting...</span><span id="pct">0%</span><i class="ls-spin"></i></div></div></div><div id="ls-log"><div id="data"></div><div id="console"></div></div><div id="bar"><div id="fill"></div></div></div>
 <div id="fps"></div>
-<section id="mirror-setup" hidden aria-labelledby="mirror-title">
-	<div class="mirror-card">
-		<div class="mirror-kicker">PlayGTA5 · local data</div>
-		<h1 id="mirror-title">Bring your own mirror</h1>
-		<p id="mirror-status" aria-live="polite">Checking local browser storage…</p>
-		<progress id="mirror-progress" hidden></progress>
-		<input id="mirror-file" type="file" accept=".zip,.rar,application/zip,application/vnd.rar" hidden>
-		<div class="mirror-actions">
-			<button id="mirror-choose" type="button">Choose mirror archive (.zip or .rar)</button>
-			<button id="mirror-start" type="button" hidden>Start game</button>
-			<button id="mirror-export" type="button" hidden>Download local build</button>
-			<button id="mirror-remove" type="button" hidden>Remove saved mirror</button>
-		</div>
-		<p class="mirror-footnote">The archive is processed on this device and is not uploaded. The mirror is saved in this browser for future visits. Import and local-build export can require 20+ GB of free disk space. Use your own legally obtained game data.</p>
-	</div>
-</section>
+<input id="mirror-file" type="file" accept=".zip,.rar,application/zip,application/vnd.rar" hidden>
 <script src="/vendor/zip/zip.min.js"></script>
 <script src="/static-app.js"></script>
 <script type="module">
@@ -141,6 +117,7 @@ const postLog = (text) => { if (remoteLog) fetch('/log', { method: 'POST', body:
 // sits bottom left and the instructional button bar bottom right at the boot-time safe zone (7.5 %, CHudTools::GetFakeLoadingScreenSafeZone).
 // Art, logo, spinner and the font ($Font2 = Chalet London 1960) are the game's (phase3/make_title.py, served at /b/8b0b5899ed/title/).
 let stopTitle = () => {};
+if (mirrorState.ready && crossOriginIsolated) document.getElementById('ls-logo').src = '/b/8b0b5899ed/title/logo.png';
 {
 	const stage = document.getElementById('ls-stage'), holder = document.getElementById('ls-screens');
 	const fit = () => {
@@ -230,18 +207,20 @@ let stopTitle = () => {};
 		}
 		if (!stopped) raf = requestAnimationFrame(tick);
 	};
-	let next = prepare(0);
-	const cycle = () => next.then((defs) => {
-		if (stopped) return;
-		show(defs);
-		index = (index + 1) % order.length;
-		next = prepare(index);
-		timer = setTimeout(cycle, 14000);		// timerDuration
-	});
-	timer = setTimeout(cycle, 500);
-	raf = requestAnimationFrame(tick);
-	stopTitle = () => { stopped = true; clearTimeout(timer); cancelAnimationFrame(raf); };
-}
+		if (mirrorState.ready && crossOriginIsolated) {
+			let next = prepare(0);
+			const cycle = () => next.then((defs) => {
+				if (stopped) return;
+				show(defs);
+				index = (index + 1) % order.length;
+				next = prepare(index);
+				timer = setTimeout(cycle, 14000);		// timerDuration
+			});
+			timer = setTimeout(cycle, 500);
+			raf = requestAnimationFrame(tick);
+			stopTitle = () => { stopped = true; clearTimeout(timer); cancelAnimationFrame(raf); };
+		}
+	}
 // ---- start choice: Story Mode / Sandbox Mode, and Sandbox Mode's map, in the title screen's button bar ---------------------------------------------------------
 // The game's own loading-time choice (CLoadingScreens::RefreshButtonLayout: "Loading Story Mode" with a spinner, "Online" as a button) with Sandbox Mode in the
 // Online slot. Buttons are laid out like updateButtonLayout: the spinner item rightmost; on PC the icons are key caps (a click works too). Enter = Story Mode;
@@ -260,7 +239,8 @@ const ACTS = {		// button: text, key cap, key codes
 	story: ['Story Mode', 'Enter', ['Enter', 'NumpadEnter']],
 };
 const LOADING = { 1: 'Loading Story Mode', 2: 'Loading Sandbox Mode: GTA V Map', 3: 'Loading Sandbox Mode: GTA VI Map' };
-const modesEl = document.getElementById('modes'), modeButtons = [...modesEl.querySelectorAll('button')];
+const modesEl = document.getElementById('modes'), modeButtons = [...modesEl.querySelectorAll('button[data-act]')];
+const mirrorChooseButton = document.getElementById('mirror-choose'), mirrorExportButton = document.getElementById('mirror-export');
 const isMode = (act) => act === 'story' || act === 'sandbox';
 const showModes = () => {
 	for (const b of modeButtons) {
@@ -272,9 +252,11 @@ const showModes = () => {
 		b.replaceChildren(text, icon);
 		b.style.order = loading ? 1 : 0;
 		b.disabled = startCommitted;
-		b.hidden = startCommitted ? !loading : pickingMap === isMode(act);		// the modes, or the map choice with Back
+		b.hidden = !mirrorState.ready || (startCommitted ? !loading : pickingMap === isMode(act));		// the modes, or the map choice with Back
 		b.classList.toggle('chosen', loading);
 	}
+	mirrorChooseButton.hidden = !!mirrorState.error || !!mirrorState.local || mirrorState.ready;
+	mirrorExportButton.hidden = !mirrorState.ready || !!mirrorState.local || !waitingChoice;
 	if (startMode) modesEl.classList.remove('ask');
 	if (waitingChoice && !startMode) document.getElementById('label').textContent = pickingMap ? 'Choose a map to continue' : 'Choose Story Mode or Sandbox Mode to continue';
 };
@@ -294,9 +276,12 @@ const act = (a) => {
 	else if (a === 'map6') choose(3);
 	else { pickingMap = a === 'sandbox'; showModes(); }		// Sandbox Mode (or its loading item: change the map) asks for the map; Back closes that
 };
-modesEl.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && !b.hidden) act(b.dataset.act); });
+modesEl.addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b && !b.hidden) act(b.dataset.act); });
 addEventListener('keydown', (e) => {
-	if (startCommitted || e.ctrlKey || e.altKey || e.metaKey || !document.getElementById('loading')) return;
+	if (e.ctrlKey || e.altKey || e.metaKey || !document.getElementById('loading')) return;
+	if (e.code === 'KeyD' && !mirrorExportButton.hidden && !mirrorExportButton.disabled) { e.preventDefault(); e.stopImmediatePropagation(); mirrorExportButton.click(); return; }
+	if (e.code === 'KeyM' && !mirrorChooseButton.hidden && !mirrorChooseButton.disabled) { e.preventDefault(); e.stopImmediatePropagation(); mirrorChooseButton.click(); return; }
+	if (startCommitted) return;
 	const b = modeButtons.find((x) => !x.hidden && ACTS[x.dataset.act][2].includes(e.code));
 	if (!b) return;
 	act(b.dataset.act);
@@ -304,7 +289,7 @@ addEventListener('keydown', (e) => {
 }, { capture: true });
 showModes();
 // ---- loading progress: the engine (prejs.js, loader.js) and the GPU worker publish {pct, label} on a BroadcastChannel ------------------
-{
+if (mirrorState.ready) {
 	const loading = document.getElementById('loading'), fill = document.getElementById('fill'), label = document.getElementById('label'), pct = document.getElementById('pct');
 	let target = 0, shown = 0, ready = false, dirty = false, loadingGone = false;
 	let dataBytes = 0, worldBase = -1;
@@ -413,21 +398,34 @@ async function dropOldCache() {
 }
 let lowMemory = false;		// set below (module scope: the ?mem readout further down also needs it)
 let startSize = [1280, 720], wantSize = null;		// set below (module scope: installInput uses them)
-const mirrorSetup = document.getElementById('mirror-setup');
+if (!mirrorState.ready || !crossOriginIsolated) {
+	stopTitle();
+	document.getElementById('ls-screens').style.display = 'none';
+	document.getElementById('ls-logo').src = '/favicon.ico';
+}
 if (!crossOriginIsolated) {
 	document.getElementById('label').textContent = 'not cross-origin isolated: open the page over https (or localhost); the server sends COOP/COEP';
 	document.getElementById('label').style.color = '#e66';
-	mirrorSetup.hidden = false;
-	document.getElementById('loading').style.display = 'none';
-	canvas.style.display = 'none';
+	document.getElementById('loading').classList.add('mirror-gate');
+	mirrorChooseButton.hidden = true;
+	mirrorExportButton.hidden = true;
 }
-else if (!mirrorState.ready || q.get('play') !== '1') {
-	mirrorSetup.hidden = false;
-	document.getElementById('loading').style.display = 'none';
-	canvas.style.display = 'none';
+else if (mirrorState.error) {
+	document.getElementById('loading').classList.add('mirror-gate');
+	document.getElementById('label').textContent = 'Mirror storage is unavailable';
+	document.getElementById('label').style.color = '#e66';
+	mirrorChooseButton.hidden = true;
+	mirrorExportButton.hidden = true;
+}
+else if (!mirrorState.ready) {
+	document.getElementById('loading').classList.add('mirror-gate');
+	document.getElementById('label').textContent = 'Choose your mirror archive to begin';
+	document.getElementById('pct').textContent = '';
+	mirrorChooseButton.hidden = !!mirrorState.error;
+	mirrorExportButton.hidden = true;
 }
 else {
-	mirrorSetup.hidden = true;
+	document.getElementById('loading').classList.remove('mirror-gate');
 	document.getElementById('loading').style.display = '';
 	canvas.style.display = '';
 	const offscreen = canvas.transferControlToOffscreen();

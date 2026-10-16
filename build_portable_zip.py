@@ -33,7 +33,7 @@ def main():
             if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.part' and path.name not in {'package-manifest.json', 'package-report.json', 'package-status.json'}:
                 files.append(path)
     for name in ['README.md', 'Launch-Local.cmd', 'Start-Local.ps1', 'serve_local.py', 'verify_snapshot.py',
-                 'mirror_site.py', 'bundle_runtime.py', 'build_portable_zip.py', 'homepage.html', 'index.html',
+                 'mirror_site.py', 'bundle_runtime.py', 'build_portable_zip.py', 'homepage.html', 'index.html', 'favicon.ico',
                  'static-app.js', 'sw.js', 'import-worker.js', 'server.js',
                  'loader.js', 'game.js', 'io_worker.js', 'wgpu_worker.js', 'headers.txt',
                  'data-manifest.json', 'shader-index.json', 'public_discovery.py',
